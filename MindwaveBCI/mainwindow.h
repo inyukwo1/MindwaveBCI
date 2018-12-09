@@ -2,11 +2,14 @@
 #define MAINWINDOW_H
 
 #include "mindwaveconnector.h"
+#include "Windows.h"
+#include "client.h"
 
 #include <QMainWindow>
 #include <QOpenGLWidget>
 #include <QLabel>
 #include <QPushButton>
+#include <vector>
 
 namespace Ui {
 class MainWindow;
@@ -19,8 +22,11 @@ public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
     void setLabel();
+    Client* client;
+    bool savemode;
+
 public slots:
-    void update();
+    void updateSelf();
     void handleButton();
 protected:
     void paintEvent(QPaintEvent* event);
@@ -30,6 +36,8 @@ private:
 
     Ui::MainWindow *ui;
     QLabel* status;
+    QLabel* zero_status;
+    QLabel* two_status;
     std::thread* m_status_updater;
 
     QPushButton* m_button;
@@ -37,6 +45,10 @@ private:
 
     bool m_blue_show;
     bool m_red_show;
-    std::chrono::high_resolution_clock::time_point m_t_start;
+    double m_t_start;
+
+    std::vector<int> show_list;
+    //debug
+    double m_t_just_before;
 };
 #endif // MAINWINDOW_H

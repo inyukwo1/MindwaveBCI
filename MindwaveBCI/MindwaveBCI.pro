@@ -5,6 +5,8 @@
 #-------------------------------------------------
 
 QT       += core gui widgets
+QT += network opengl
+INCLUDEPATH += .
 
 TARGET = MindwaveBCI
 TEMPLATE = app
@@ -25,10 +27,29 @@ CONFIG += c++11
 SOURCES += \
         main.cpp \
         mainwindow.cpp \
+    mindwaveconnector.cpp \
+    main.cpp \
+    mainwindow.cpp \
+    mindwaveconnector.cpp \
+    main.cpp \
+    mainwindow.cpp \
+    mindwaveconnector.cpp \
+    main.cpp \
+    mainwindow.cpp \
     mindwaveconnector.cpp
 
 HEADERS += \
         mainwindow.h \
+    mindwaveconnector.h \
+    client.h \
+    client.h \
+    mainwindow.h \
+    mindwaveconnector.h \
+    client.h \
+    mainwindow.h \
+    mindwaveconnector.h \
+    client.h \
+    mainwindow.h \
     mindwaveconnector.h
 
 FORMS += \
@@ -45,3 +66,5 @@ else:unix: LIBS += -L$$PWD/../../MindwaveSDK3.2/StreamSDKforPC/libs/x64/ -lthink
 
 INCLUDEPATH += $$PWD/../../MindwaveSDK3.2/StreamSDKforPC/libs/x64
 DEPENDPATH += $$PWD/../../MindwaveSDK3.2/StreamSDKforPC/libs/x64
+
+DISTFILES +=

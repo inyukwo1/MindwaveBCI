@@ -3,19 +3,22 @@
 
 #include "thinkgear.h"
 #include "Windows.h"
+#include "client.h"
 
 #include <ctime>
 #include <cstdlib>
+#include <cassert>
 #include <iostream>
 #include <fstream>
 #include <thread>
 #include <mutex>
 
-#define COM_PORT_NAME "\\\\.\\COM3"
+#define COM_PORT_NAME "\\\\.\\COM5"
 #define TG_BAUD_RATE TG_BAUD_57600
 #define PACKET_FETCH_RATE 1000
 
-class MindwaveConnector {
+class MindwaveConnector: public QObject {
+    Q_OBJECT
 public:
 
     MindwaveConnector() {
@@ -26,6 +29,9 @@ public:
         m_recent_poor = 0;
         m_recent_attention = 0;
         m_recent_meditation = 0;
+
+        m_recording_pos = 0;
+        sendmode = false;
 
         getConnectionId();
         connect();
@@ -47,7 +53,6 @@ public:
     }
 
     void recordStart() {
-        m_recording = true;
     }
 
     bool recording() {
@@ -60,18 +65,59 @@ public:
         std::cout << "END" << std::endl;
     }
 
+    void recordingLeft() {
+        m_recording = true;
+        m_recording_pos = 0;
+    }
+
+    void recordingMiddle() {
+        m_recording = true;
+        m_recording_pos = 1;
+    }
+
+    void recordingRight() {
+        m_recording = true;
+        m_recording_pos = 2;
+    }
+
+    void recordingRest() {
+        m_recording = false;
+    }
+
+    int recordingPos() {
+        return m_recording_pos;
+    }
+
+
     void printPackets(std::string file_name) {
         m_packet_printer = new std::thread([this, file_name](int connection_id){
 
             m_file_out.open(file_name);
 
             std::cout << "START" << std::endl;
+            int i = 0;
+            int threshold = 5;
+            int sum[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+            std::vector<int> observed_values;
             while (true) {
-                TG_ReadPackets(connection_id, -1);
+                Sleep(0.5);
+                bool raw_assertion = false;
+                if (m_recording != true) {
+                    i = 0;
+                }
+                if (m_record_finish) {
+                    break;
+                }
+
+                int packetread = TG_ReadPackets(connection_id, 1);
+                if (packetread != 1)
+                    continue;
+
                 if (TG_GetValueStatus(connection_id, TG_DATA_RAW) != 0) {
                     int value = (int) TG_GetValue(connection_id, TG_DATA_RAW);
+                    observed_values.push_back(value);
                     if (this->recording()) {
-                        m_file_out << value << "\n";
+                        m_file_out << value << " ";
                     }
                 }
                 if (TG_GetValueStatus(connection_id, TG_DATA_POOR_SIGNAL) != 0) {
@@ -79,9 +125,103 @@ public:
                 }
                 if (TG_GetValueStatus(connection_id, TG_DATA_ATTENTION) != 0) {
                     m_recent_attention = (int) TG_GetValue(connection_id, TG_DATA_ATTENTION);
+                    if (m_recent_attention >= threshold)
+                        i++;
                 }
                 if (TG_GetValueStatus(connection_id, TG_DATA_MEDITATION) != 0) {
                     m_recent_meditation = (int) TG_GetValue(connection_id, TG_DATA_MEDITATION);
+                }
+
+                if (TG_GetValueStatus(connection_id, TG_DATA_DELTA) != 0) {
+                    int value = (int) TG_GetValue(connection_id, TG_DATA_DELTA);
+                    observed_values.push_back(value);
+                    raw_assertion = true;
+                    if (this->recording()) {
+                        m_file_out << value << " ";
+                        sum[0] += value;
+                    }
+                }
+                if (TG_GetValueStatus(connection_id, TG_DATA_THETA) != 0) {
+                    int value = (int) TG_GetValue(connection_id, TG_DATA_THETA);
+                    observed_values.push_back(value);
+                    assert(raw_assertion == true);
+                    if (this->recording()) {
+                        m_file_out << value << " ";
+                        sum[1] += value;
+                    }
+                } else {
+                    assert(raw_assertion == false);
+                }
+                if (TG_GetValueStatus(connection_id, TG_DATA_ALPHA1) != 0) {
+                    int value = (int) TG_GetValue(connection_id, TG_DATA_ALPHA1);
+                    observed_values.push_back(value);
+                    assert(raw_assertion == true);
+                    if (this->recording()) {
+                        m_file_out <<value << " ";
+                        sum[2] += value;
+                    }
+                } else {
+                    assert(raw_assertion == false);
+                }
+                if (TG_GetValueStatus(connection_id, TG_DATA_ALPHA2) != 0) {
+                    int value = (int) TG_GetValue(connection_id, TG_DATA_ALPHA2);
+                    observed_values.push_back(value);
+                    assert(raw_assertion == true);
+                    if (this->recording()) {
+                        m_file_out << value << " ";
+                        sum[3] += value;
+                    }
+                } else {
+                    assert(raw_assertion == false);
+                }
+                if (TG_GetValueStatus(connection_id, TG_DATA_BETA1) != 0) {
+                    int value = (int) TG_GetValue(connection_id, TG_DATA_BETA1);
+                    observed_values.push_back(value);
+                    assert(raw_assertion == true);
+                    if (this->recording()) {
+                        m_file_out << value << " ";
+                        sum[4] += value;
+                    }
+                } else {
+                    assert(raw_assertion == false);
+                }
+                if (TG_GetValueStatus(connection_id, TG_DATA_BETA2) != 0) {
+                    int value = (int) TG_GetValue(connection_id, TG_DATA_BETA2);
+                    observed_values.push_back(value);
+                    assert(raw_assertion == true);
+                    if (this->recording()) {
+                        m_file_out << value << " ";
+                        sum[5] += value;
+                    }
+                } else {
+                    assert(raw_assertion == false);
+                }
+                if (TG_GetValueStatus(connection_id, TG_DATA_GAMMA1) != 0) {
+                    int value = (int) TG_GetValue(connection_id, TG_DATA_GAMMA1);
+                    observed_values.push_back(value);
+                    assert(raw_assertion == true);
+                    if (this->recording()) {
+                        m_file_out << value << " ";
+                        sum[6] += value;
+                    }
+                } else {
+                    assert(raw_assertion == false);
+                }
+                if (TG_GetValueStatus(connection_id, TG_DATA_GAMMA2) != 0) {
+                    int value = (int) TG_GetValue(connection_id, TG_DATA_GAMMA2);
+                    assert(raw_assertion == true);
+                    observed_values.push_back(value);
+                    if (observed_values.size() == 520 && sendmode) {
+                        // TODO if this takes a lot of time, we have to think..
+                       emit toServer(observed_values);
+                    }
+                    observed_values.resize(0);
+                    if (this->recording()) {
+                        m_file_out << value << " " << m_recording_pos << "\n";
+                        sum[7] += value;
+                    }
+                } else {
+                    assert(raw_assertion == false);
                 }
             }
         }, m_connection_id);
@@ -111,6 +251,7 @@ private:
     }
 
     int m_connection_id;
+    int m_recording_pos;
     std::thread* m_packet_printer;
 
     std::ofstream m_file_out;
@@ -120,6 +261,12 @@ private:
     int m_recent_poor;
     int m_recent_attention;
     int m_recent_meditation;
+
+public:
+    bool sendmode;
+
+signals:
+    void toServer(std::vector<int> array);
 };
 
 #endif // MINDWAVECONNECTOR_H
